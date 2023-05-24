@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dotnetapp 
+  namespace: dotnetapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dotnetapp
+  template:
+    metadata:
+      labels:
+        app: dotnetapp
+    spec:
+      containers:
+      - name: dotnetapp
+        image: aksrrpoc.azurecr.io/sample/dotnet:v3
+        ports:
+        - containerPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dotnetapp
+  namespace: dotnetapp
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    app: dotnetapp
+---
+kind: Ingress
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: dotnet
+  namespace: dotnetapp
+  annotations:
+    kubernetes.azure.com/tls-cert-keyvault-uri: https://my-kv-rr.vault.azure.net/certificates/aks-cert-ingress
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "32k"
+    #nginx.ingress.kubernetes.io/proxy-protocol: "true"
+    #nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    #nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    
+spec:
+  ingressClassName: webapprouting.kubernetes.azure.com
+  tls:
+    - hosts:
+        - akspocrr.com
+      secretName: keyvault-dotnet
+  rules:
+    - host: akspocrr.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dotnetapp
+                port:
+                  number: 80
